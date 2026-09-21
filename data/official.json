@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "baselineVersion": "8.0.78",
+  "source": "https://weixin.qq.com/api/updates",
+  "latestObserved": {
+    "version": "8.0.78",
+    "publish_date": "2026-09-09",
+    "source": "https://weixin.qq.com/updates?platform=android&version=8.0.78",
+    "status": "available",
+    "notes": [
+      "修复了一些已知问题。"
+    ]
+  },
+  "releases": [],
+  "packages": []
+}

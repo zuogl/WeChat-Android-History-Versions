@@ -6,9 +6,19 @@
 
 ## 数据来源
 
-感谢 [DJB-Developer/wechat-android-history-versions](https://github.com/DJB-Developer/wechat-android-history-versions) 整理版本数据。本仓库独立创建，每天自动读取其 `version.json` 并生成目录；不是该仓库的 fork。
+感谢 [DJB-Developer/wechat-android-history-versions](https://github.com/DJB-Developer/wechat-android-history-versions) 整理版本数据。本仓库独立创建，初始数据取自其 `version.json`，现已冻结保留；不是该仓库的 fork。后续新增版本与安装包改从微信官方 Android 更新日志及下载配置获取。
 
-[查看本次数据来源](https://github.com/DJB-Developer/wechat-android-history-versions/blob/a5ab5bec551d541d72ace7bb71bdc67e34264878/version.json) · [微信官方更新日志](https://weixin.qq.com/updates?platform=android) · [同步说明](docs/SYNC.md)
+[查看初始数据来源](https://github.com/DJB-Developer/wechat-android-history-versions/blob/a5ab5bec551d541d72ace7bb71bdc67e34264878/version.json) · [微信官方更新日志](https://weixin.qq.com/updates?platform=android) · [同步说明](docs/SYNC.md)
+
+## 微信官方增量同步
+
+初始 **172 条安装包记录及其页面保持不变**。从初始最新版本 8.0.78 之后收录官方新版本，也追加同版本新安装包；不回填更早的官方历史版本。
+
+官方最近观察版本：**8.0.78**（2026-09-09）。已新增 **0 条日志、0 个安装包**。
+
+[微信官方 Android 日志](https://weixin.qq.com/updates?platform=android) · [官方版本列表](https://weixin.qq.com/api/updates) · [官方下载配置](https://weixin.qq.com/api/download_conf)
+
+暂无需要追加的官方新版本日志。
 
 ## Android 历史版本下载
 
@@ -197,7 +207,7 @@
 
 ## 自动更新与贡献
 
-定时同步：每天北京时间 **10:23**（GitHub 调度可能延迟），也可在 Actions 中手动运行 **Sync upstream packages**。仅数据变化时提交；数据格式异常、链接域名异常或已有安装包从上游消失时停止更新并保留现有数据。
+定时同步：每天北京时间 **10:23**（GitHub 调度可能延迟），也可在 Actions 中手动运行 **Sync official Android releases**。仅数据变化时提交；官方接口异常、数据冲突或链接域名异常时停止提交。历史记录与页面保留，不因来源删除记录而自动删除。
 
 本 README 和 `versions/` 下的页面由脚本生成。修改展示模板请编辑 `scripts/sync.mjs`，不要直接修改生成页面。运行方式见 [同步说明](docs/SYNC.md)。
 

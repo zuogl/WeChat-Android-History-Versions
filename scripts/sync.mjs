@@ -92,40 +92,25 @@ async function saveIfChanged(name, content) {
   return true;
 }
 
-async function getText(url, api = false) {
-  const headers = { 'User-Agent': 'WeChat-Android-History-Versions-sync', Accept: api ? 'application/vnd.github+json' : 'text/plain' };
-  if (api && process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  const response = await fetch(url, { headers, signal: AbortSignal.timeout(30000), redirect: 'error' });
-  assert(response.ok, `Upstream returned HTTP ${response.status}`);
-  const text = await response.text();
-  assert(text.length < 2_000_000, 'Unexpectedly large upstream response');
-  return text;
-}
-
 async function run() {
   const args = process.argv.slice(2);
   assert(args.every(arg => ['--offline', '--check'].includes(arg)), 'Unknown argument');
   const check = args.includes('--check');
-  const previousText = await optionalRead('data/upstream.json');
-  const previousMeta = JSON.parse(await optionalRead('data/source.json') || 'null');
-  let dataText = previousText;
-  let meta = previousMeta;
-  if (!args.includes('--offline') && !check) {
-    const commits = JSON.parse(await getText(`https://api.github.com/repos/${SOURCE}/commits?sha=main&path=version.json&per_page=1`, true));
-    const commit = commits[0]?.sha;
-    assert(SHA.test(commit), 'Invalid upstream commit response');
-    dataText = await getText(`https://raw.githubusercontent.com/${SOURCE}/${commit}/version.json`);
-    const digest = sha256(dataText);
-    meta = { repository: SOURCE, branch: 'main', path: 'version.json', commit, sha256: digest };
-  }
-  assert(dataText && meta, 'Local source snapshot missing; run npm run sync first');
+  const dataText = await optionalRead('data/upstream.json');
+  const meta = JSON.parse(await optionalRead('data/source.json') || 'null');
+  assert(dataText && meta, 'Preserved baseline missing; restore it from Git history');
   assert(meta.repository === SOURCE && meta.path === 'version.json' && SHA.test(meta.commit), 'Invalid source metadata');
   assert(sha256(dataText) === meta.sha256, 'Source snapshot digest mismatch');
-  const rows = normalize(JSON.parse(dataText));
-  if (previousText) guardRemovals(normalize(JSON.parse(previousText)), rows);
-  const generated = render(rows, meta);
+  const baseline = JSON.parse(dataText);
+  const rows = normalize(baseline);
+  const { collectOfficial, validateState, renderOfficial } = await import('./official.mjs');
+  let official = JSON.parse(await optionalRead('data/official.json') || 'null');
+  if (!args.includes('--offline') && !check) official = await collectOfficial(baseline, official);
+  assert(official, 'Official snapshot missing; run npm run sync first');
+  validateState(official, baseline);
+  const generated = renderOfficial(rows, meta, official);
   // Fail before writing if stale directories would remain; never delete user files.
-  const expectedDirectories = new Set(rows.map(row => path.posix.basename(row.directory)));
+  const expectedDirectories = new Set([...generated.keys()].filter(name => name.startsWith('versions/')).map(name => name.split('/')[1]));
   const existing = await readdir(path.join(ROOT, 'versions'), { withFileTypes: true }).catch(error => {
     if (error.code === 'ENOENT') return []; throw error;
   });
@@ -149,10 +134,9 @@ async function run() {
     }
   }
   if (!check) {
-    changed += Number(await saveIfChanged('data/upstream.json', dataText));
-    changed += Number(await saveIfChanged('data/source.json', JSON.stringify(meta, null, 2) + '\n'));
+    changed += Number(await saveIfChanged('data/official.json', JSON.stringify(official, null, 2) + '\n'));
   }
-  console.log(`${check ? 'Verified' : 'Generated'} ${rows.length} package pages across ${new Set(rows.map(row => row.version)).size} versions; ${changed} files changed.`);
+  console.log(`${check ? 'Verified' : 'Generated'} ${rows.length} preserved packages + ${official.packages.length} official packages, ${official.releases.length} official logs; ${changed} files changed.`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

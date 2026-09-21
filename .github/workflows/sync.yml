@@ -1,4 +1,4 @@
-name: Sync upstream packages
+name: Sync official Android releases
 
 on:
   schedule:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: upstream-sync
+  group: official-sync
   cancel-in-progress: false
 
 jobs:
@@ -23,18 +23,17 @@ jobs:
           node-version: '22'
       - run: npm test
       - run: npm run sync
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
       - run: npm run check
       - name: Commit changed package index
         shell: bash
         run: |
           git add -- README.md data versions
+          if [ -d logs ]; then git add -- logs; fi
           if git diff --cached --quiet; then
-            echo 'No source changes.'
+            echo 'No official source changes.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Update Android package index from upstream'
+          git commit -m 'Sync new Android releases from official Weixin logs'
           git push
