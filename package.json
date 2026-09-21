@@ -1,0 +1,12 @@
+{
+  "name": "wechat-android-history-versions",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "generate": "node scripts/sync.mjs --offline",
+    "check": "node scripts/sync.mjs --check",
+    "test": "node --test"
+  }
+}
