@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
-import { normalize, render } from './sync.mjs';
+import { normalize } from './sync.mjs';
 
 export const ORIGIN = 'https://weixin.qq.com';
 export const logURL = version => `${ORIGIN}/updates?platform=android&version=${version}`;
 export const detailURL = version => `${ORIGIN}/api/updates_items?platform=android&version=${version.replaceAll('.', '')}`;
 const VERSION = /^\d+(?:\.\d+){1,3}$/;
-const escapeText = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/[\\`*_[\]{}()#!|]/g, '\\$&');
 
 export function compareVersion(a, b) {
   const x = a.split('.').map(Number), y = b.split('.').map(Number);
@@ -139,34 +138,4 @@ async function requestJSON(url, optional = false) {
   const text = await response.text();
   assert(text.length < 2_000_000, 'Official response too large');
   return JSON.parse(text);
-}
-
-export function renderOfficial(baselineRows, meta, state) {
-  // Rendering legacy records separately preserves all their pages byte for byte.
-  const files = render(baselineRows, meta);
-  const rows = state.packages.length ? normalize(state.packages) : [];
-  let main = files.get('README.md');
-  const baselineVersions = new Set(baselineRows.map(row => row.version)).size;
-  const totalVersions = new Set([...baselineRows, ...rows].map(row => row.version)).size;
-  main = main.replace(`目前收录 **${baselineVersions} 个版本、${baselineRows.length} 个安装包链接**`, `目前收录 **${totalVersions} 个版本、${baselineRows.length + rows.length} 个安装包链接**`);
-  main = main.replace('每天自动读取其 `version.json` 并生成目录；不是该仓库的 fork。', '初始数据取自其 `version.json`，现已冻结保留；不是该仓库的 fork。后续新增版本与安装包改从微信官方 Android 更新日志及下载配置获取。');
-  main = main.replace('查看本次数据来源', '查看初始数据来源');
-  main = main.replace('Sync upstream packages', 'Sync official Android releases');
-  main = main.replace('数据格式异常、链接域名异常或已有安装包从上游消失时停止更新并保留现有数据。', '官方接口异常、数据冲突或链接域名异常时停止提交。历史记录与页面保留，不因来源删除记录而自动删除。');
-  const packageTable = rows.map(row => `| [微信 ${row.version} 安卓版](${row.directory}/) | ${row.date} | [${row.filename}](${row.url}) |`).join('\n');
-  const logTable = state.releases.map(row => `| [微信 ${row.version}](logs/${row.version}/) | ${row.publish_date} | ${row.status === 'available' ? '已获取' : '详情待官方提供'} | ${rows.some(p => p.version === row.version) ? '已记录对应安装包' : '对应安装包待确认'} |`).join('\n');
-  const extra = `## 微信官方增量同步\n\n初始 **${baselineRows.length} 条安装包记录及其页面保持不变**。从初始最新版本 ${state.baselineVersion} 之后收录官方新版本，也追加同版本新安装包；不回填更早的官方历史版本。\n\n官方最近观察版本：**${state.latestObserved.version}**（${state.latestObserved.publish_date}）。已新增 **${state.releases.length} 条日志、${rows.length} 个安装包**。\n\n[微信官方 Android 日志](${ORIGIN}/updates?platform=android) · [官方版本列表](${ORIGIN}/api/updates) · [官方下载配置](${ORIGIN}/api/download_conf)\n\n${logTable ? `| 官方版本日志 | 发布日期 | 更新内容 | 下载信息 |\n| :--- | :--- | :--- | :--- |\n${logTable}\n\n` : '暂无需要追加的官方新版本日志。\n\n'}${packageTable ? `### 官方新增安装包\n\n| 版本详情 | 发布日期 | 对应安装包下载 |\n| :--- | :--- | :--- |\n${packageTable}\n\n` : ''}`;
-  main = main.replace('## Android 历史版本下载', extra + '## Android 历史版本下载');
-  files.set('README.md', main);
-  const notesText = release => release.status === 'pending' ? '官方列表已收录，详情暂未提供；下次同步重试。' : (release.notes.map(note => `- ${escapeText(note)}`).join('\n') || '官方未提供文字更新说明。');
-  for (const release of state.releases) {
-    const packages = rows.filter(row => row.version === release.version);
-    const downloads = packages.map(row => `- [${row.filename}](../../${row.directory}/)`).join('\n');
-    files.set(`logs/${release.version}/README.md`, `# 微信 ${release.version} 安卓版更新日志\n\n发布日期：${release.publish_date}\n\n## 官方更新内容\n\n${notesText(release)}\n\n## 对应版本安装包\n\n${downloads || '尚未确认对应此版本的安装包下载地址。官方日志中的“下载最新版本”可能指向其他版本，不作为本版本安装包链接。'}\n\n[查看微信官方日志](${release.source}) · [返回全部版本](../../README.md)\n`);
-  }
-  for (const row of rows) {
-    const release = state.releases.find(item => item.version === row.version);
-    files.set(`${row.directory}/README.md`, `# 微信 ${row.version} 安卓版下载｜WeChat ${row.version} for Android\n\n安装包：\`${row.filename}\`\n\n发布日期：${row.date}\n\n## 安装包下载\n\n[下载 ${row.filename}](${row.url})\n\n地址由微信官方 Android 下载配置明确关联到版本 ${row.version}，并已核对文件名版本标识；未下载或验证 APK 内部版本、签名及安装情况。\n\n## 官方更新内容\n\n${notesText(release)}\n\n[官方日志](${release.source}) · [官方下载配置](${ORIGIN}/api/download_conf) · [本版本日志](../../logs/${row.version}/) · [全部版本](../../README.md)\n`);
-  }
-  return files;
 }

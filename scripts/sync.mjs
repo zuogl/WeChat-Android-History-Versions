@@ -4,12 +4,9 @@ import { mkdir, readFile, writeFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const SOURCE = 'DJB-Developer/wechat-android-history-versions';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VERSION = /^\d+(?:\.\d+){1,3}$/;
-const SHA = /^[a-f0-9]{40}$/;
 const HOSTS = new Set(['dldir1.qq.com', 'dldir1v6.qq.com']);
-const sourceRepo = `https://github.com/${SOURCE}`;
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 
 export function normalize(input) {
@@ -55,30 +52,6 @@ export function guardRemovals(previous, next) {
   assert(missing.length === 0, `${missing.length} existing package(s) disappeared; manual review required. Previous data retained.`);
 }
 
-function sourceLink(meta) {
-  return `${sourceRepo}/blob/${meta.commit}/version.json`;
-}
-
-export function render(rows, meta) {
-  assert(SHA.test(meta.commit), 'Invalid source commit');
-  const files = new Map();
-  const groups = new Map();
-  for (const row of rows) {
-    if (!groups.has(row.version)) groups.set(row.version, []);
-    groups.get(row.version).push(row);
-  }
-  const table = rows.map(row => `| [微信 ${row.version} 安卓版](${row.directory}/) | ${row.date} | [${row.filename}](${row.url}) |`).join('\n');
-  const main = `# WeChat Android History Versions\n\n微信 Android 历史版本安装包下载索引。按版本号查找微信安卓版 APK，每个安装包都有独立目录、版本标题和下载地址。\n\n目前收录 **${groups.size} 个版本、${rows.length} 个安装包链接**。相同版本的不同安装包分别保留，点击版本名称查看对应文件详情。\n\n## 数据来源\n\n感谢 [DJB-Developer/wechat-android-history-versions](${sourceRepo}) 整理版本数据。本仓库独立创建，每天自动读取其 \`version.json\` 并生成目录；不是该仓库的 fork。\n\n[查看本次数据来源](${sourceLink(meta)}) · [微信官方更新日志](https://weixin.qq.com/updates?platform=android) · [同步说明](docs/SYNC.md)\n\n## Android 历史版本下载\n\n| 版本详情 | 发布日期（来源记录） | 安装包下载（腾讯域名） |\n| :--- | :--- | :--- |\n${table}\n\n## 使用说明\n\n- 点击版本名称进入独立目录，查看版本号、发布日期、完整文件名及下载链接。\n- 点击安装包文件名直接访问数据源记录的腾讯下载地址；本仓库不存储或重新分发 APK。\n- 同一版本可能有多个构建或文件变体，请按完整文件名区分。\n- 下载地址来自上游记录，链接当前是否可用、文件签名及能否安装或登录没有逐一验证；不承诺所有旧版本仍可使用。\n- 本项目为非官方索引，与腾讯或微信官方无隶属关系。旧版本可能存在安全或兼容性问题，通常建议使用官方最新版。\n\n## 自动更新与贡献\n\n定时同步：每天北京时间 **10:23**（GitHub 调度可能延迟），也可在 Actions 中手动运行 **Sync upstream packages**。仅数据变化时提交；数据格式异常、链接域名异常或已有安装包从上游消失时停止更新并保留现有数据。\n\n本 README 和 \`versions/\` 下的页面由脚本生成。修改展示模板请编辑 \`scripts/sync.mjs\`，不要直接修改生成页面。运行方式见 [同步说明](docs/SYNC.md)。\n\n上游数据和微信相关内容的权利归各自权利人；本仓库未将上游内容重新声明为 MIT 等开放许可证。\n`;
-  files.set('README.md', main);
-  for (const row of rows) {
-    const variants = groups.get(row.version);
-    const related = variants.filter(other => other.url !== row.url).map(other => `- [${other.filename}](../${path.posix.basename(other.directory)}/)`).join('\n');
-    const architecture = row.filename.includes('_arm64') ? '文件名含 `arm64`；未读取 APK 元数据验证。' : '来源未明确标注；不根据文件名缺少 arm64 推断为 32 位。';
-    files.set(`${row.directory}/README.md`, `# 微信 ${row.version} 安卓版下载｜WeChat ${row.version} for Android\n\n本页对应安装包 **\`${row.filename}\`**。\n\n## 版本信息\n\n| 项目 | 内容 |\n| :--- | :--- |\n| 软件 | 微信 / WeChat |\n| 平台 | Android |\n| 版本号 | ${row.version} |\n| 发布日期（来源记录） | ${row.date} |\n| 安装包文件名 | \`${row.filename}\` |\n| 架构信息 | ${architecture} |\n\n## 安装包下载\n\n[下载 ${row.filename}](${row.url})\n\n下载链接：\n\n${row.url}\n\n这是上游记录中的该安装包地址，不会自动替换成其他版本下载地址。本仓库不托管 APK，未逐包验证下载可用性、签名、安装或登录状态。\n\n## 来源\n\n- [上游版本记录](${sourceLink(meta)})\n- [微信官方 Android 更新日志](https://weixin.qq.com/updates?platform=android&version=${row.version})（官方页面可能提供最新版下载，请注意区分。）\n${row.versionFrom === 'name' ? '- 上游 version 字段为空，本页版本号从其 name 字段提取。\n' : ''}\n${related ? `## 同版本其他安装包\n\n${related}\n\n` : ''}[返回全部 Android 历史版本](../../README.md)\n\n旧版本可能存在安全或兼容性问题，通常建议使用官方最新版。\n`);
-  }
-  return files;
-}
-
 async function optionalRead(name) {
   try { return await readFile(path.join(ROOT, name), 'utf8'); }
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
@@ -96,22 +69,27 @@ async function run() {
   const args = process.argv.slice(2);
   assert(args.every(arg => ['--offline', '--check'].includes(arg)), 'Unknown argument');
   const check = args.includes('--check');
-  const dataText = await optionalRead('data/upstream.json');
-  const meta = JSON.parse(await optionalRead('data/source.json') || 'null');
+  const dataText = await optionalRead('data/packages.json');
+  const meta = JSON.parse(await optionalRead('data/checksum.json') || 'null');
   assert(dataText && meta, 'Preserved baseline missing; restore it from Git history');
-  assert(meta.repository === SOURCE && meta.path === 'version.json' && SHA.test(meta.commit), 'Invalid source metadata');
+  assert(/^[a-f0-9]{64}$/.test(meta.sha256), 'Invalid snapshot checksum');
   assert(sha256(dataText) === meta.sha256, 'Source snapshot digest mismatch');
   const baseline = JSON.parse(dataText);
   const rows = normalize(baseline);
-  const { collectOfficial, validateState, renderOfficial } = await import('./official.mjs');
+  const { collectOfficial, validateState } = await import('./official.mjs');
   let official = JSON.parse(await optionalRead('data/official.json') || 'null');
   if (!args.includes('--offline') && !check) official = await collectOfficial(baseline, official);
   assert(official, 'Official snapshot missing; run npm run sync first');
   validateState(official, baseline);
-  const generated = renderOfficial(rows, meta, official);
+  const { allocatePaths, renderPages } = await import('./pages.mjs');
+  const allRows = normalize([...baseline, ...official.packages]);
+  const previousPaths = JSON.parse(await optionalRead('data/page-paths.json') || '{}');
+  const paths = allocatePaths(allRows, previousPaths);
+  if (check) assert(JSON.stringify(paths) === JSON.stringify(previousPaths), 'Page path map out of date');
+  const generated = renderPages(allRows, official, paths);
   // Fail before writing if stale directories would remain; never delete user files.
-  const expectedDirectories = new Set([...generated.keys()].filter(name => name.startsWith('versions/')).map(name => name.split('/')[1]));
-  const existing = await readdir(path.join(ROOT, 'versions'), { withFileTypes: true }).catch(error => {
+  const expectedDirectories = new Set([...generated.keys()].filter(name => name.startsWith('版本/')).map(name => name.split('/')[1]));
+  const existing = await readdir(path.join(ROOT, '版本'), { withFileTypes: true }).catch(error => {
     if (error.code === 'ENOENT') return []; throw error;
   });
   for (const entry of existing) assert(entry.isDirectory() && expectedDirectories.has(entry.name), `Unexpected versions entry: ${entry.name}; manual review required`);
@@ -135,6 +113,7 @@ async function run() {
   }
   if (!check) {
     changed += Number(await saveIfChanged('data/official.json', JSON.stringify(official, null, 2) + '\n'));
+    changed += Number(await saveIfChanged('data/page-paths.json', JSON.stringify(paths, null, 2) + '\n'));
   }
   console.log(`${check ? 'Verified' : 'Generated'} ${rows.length} preserved packages + ${official.packages.length} official packages, ${official.releases.length} official logs; ${changed} files changed.`);
 }

@@ -1,4 +1,4 @@
-name: Sync official Android releases
+name: 同步微信安卓版更新
 
 on:
   schedule:
@@ -24,16 +24,16 @@ jobs:
       - run: npm test
       - run: npm run sync
       - run: npm run check
-      - name: Commit changed package index
+      - name: 提交版本目录更新
         shell: bash
         run: |
-          git add -- README.md data versions
-          if [ -d logs ]; then git add -- logs; fi
+          git add -- README.md data '版本'
+          if [ -d '更新日志' ]; then git add -- '更新日志'; fi
           if git diff --cached --quiet; then
-            echo 'No official source changes.'
+            echo '暂无版本更新。'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Sync new Android releases from official Weixin logs'
+          git commit -m '同步微信安卓版更新'
           git push

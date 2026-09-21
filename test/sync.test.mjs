@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalize, guardRemovals, render } from '../scripts/sync.mjs';
+import { normalize, guardRemovals } from '../scripts/sync.mjs';
+import { allocatePaths, renderPages } from '../scripts/pages.mjs';
+const render = rows => renderPages(rows, { releases: [] }, allocatePaths(rows));
 
 const row = (version = '8.0.78', filename = 'weixin8078android3180_0x28004e32_arm64.apk') => ({
   name: `微信 ${version} for Android`, version, publish_date: '2026-09-09',
   url: `https://dldir1v6.qq.com/weixin/android/${filename}`
 });
-const meta = { commit: 'a'.repeat(40) };
+const meta = {};
+
 
 test('one directory per APK, even when version and date match', () => {
   const rows = normalize([row(), row('8.0.78', 'weixin8078android3180_0x28004e30_arm64.apk')]);
@@ -14,8 +17,8 @@ test('one directory per APK, even when version and date match', () => {
   const files = render(rows, meta);
   assert.equal(files.size, 3);
   for (const r of rows) {
-    const page = files.get(`${r.directory}/README.md`);
-    assert(page.startsWith('# 微信 8.0.78'));
+    const page = files.get(`${allocatePaths(rows)[r.url]}/README.md`);
+    assert(page.startsWith('# 微信安卓版 8.0.78'));
     assert(page.includes(r.url));
     assert(page.includes('同版本其他安装包'));
   }
@@ -56,7 +59,6 @@ test('numeric version order and deterministic rendering', () => {
   const rows = normalize([row('8.0.9', 'weixin809.apk'), row('8.0.78')]);
   assert.equal(rows[0].version, '8.0.78');
   assert.deepEqual(render(rows, meta), render(rows, meta));
-  assert.throws(() => render(rows, { commit: '../main' }));
 });
 
 test('source URL whitespace is removed in pages and duplicate detection', () => {

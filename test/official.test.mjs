@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { normalize, render } from '../scripts/sync.mjs';
-import { collectOfficial, mergeOfficial, renderOfficial, detailURL } from '../scripts/official.mjs';
+import { allocatePaths, renderPages, logPath } from '../scripts/pages.mjs';
+import { normalize } from '../scripts/sync.mjs';
+import { collectOfficial, mergeOfficial, detailURL } from '../scripts/official.mjs';
 
 const baseline = [{ name: '微信 8.0.78 for Android', version: '8.0.78', publish_date: '2026-09-09', url: 'https://dldir1v6.qq.com/weixin/android/weixin8078android3180_old_arm64.apk' }];
 const record = (version = '8.0.79') => ({ platform: 'android', version, publishDate: '2026-09-20' });
@@ -11,7 +12,11 @@ const apk = (v, suffix = '') => `https://dldir1v6.qq.com/weixin/android/weixin${
 const config = version => ({ androidVersion: version, android: apk(version) });
 const detail = version => ({ ...record(version), content: [{ desc: '修复已知问题。' }], downloadUrl: apk('8.0.99') });
 const details = (...versions) => new Map(versions.map(v => [v, detail(v)]));
-const meta = { commit: 'a'.repeat(40) };
+const meta = {};
+const renderOfficial = (baselineRows, _meta, state) => {
+  const rows = [...baselineRows, ...(state.packages.length ? normalize(state.packages) : [])];
+  return renderPages(rows, state, allocatePaths(rows, allocatePaths(baselineRows)));
+};
 
 test('new log plus correctly matched package; ignore misleading historical downloadUrl', () => {
   const state = mergeOfficial(baseline, null, listing('8.0.79', '8.0.80'), config('8.0.80'), details('8.0.79', '8.0.80'));
@@ -20,7 +25,7 @@ test('new log plus correctly matched package; ignore misleading historical downl
   assert.equal(state.packages[0].version, '8.0.80');
   assert.equal(state.packages[0].url, apk('8.0.80'));
   const files = renderOfficial(normalize(baseline), meta, state);
-  assert(files.get('logs/8.0.79/README.md').includes('尚未确认'));
+  assert(files.get(logPath('8.0.79')).includes('尚未确认'));
   assert(![...files.values()].join('').includes(apk('8.0.99')));
 });
 
@@ -28,9 +33,9 @@ test('same-version new build appended; existing source data and pages unchanged'
   const before = JSON.stringify(baseline);
   const state = mergeOfficial(baseline, null, listing('8.0.78'), config('8.0.78'), details('8.0.78'));
   assert.equal(state.packages.length, 1);
-  const legacy = render(normalize(baseline), meta);
   const files = renderOfficial(normalize(baseline), meta, state);
-  for (const [name, text] of legacy) if (name !== 'README.md') assert.equal(files.get(name), text);
+  const originalDirectory = allocatePaths(normalize(baseline))[baseline[0].url];
+  assert(files.get(`${originalDirectory}/README.md`).includes(baseline[0].url));
   assert.equal(JSON.stringify(baseline), before);
   const next = mergeOfficial(baseline, state, listing('8.0.78'), config('8.0.78'), details('8.0.78'));
   assert.deepEqual(next, state);
@@ -69,12 +74,12 @@ test('future package/log navigation resolves within the complete generated file 
   const files = renderOfficial(normalize(baseline), meta, state);
   for (const [name, text] of files) {
     for (const [, href] of text.matchAll(/\]\(([^)]+)\)/g)) {
-      if (href.startsWith('https:') || href === 'docs/SYNC.md') continue;
-      const target = new URL(href, 'https://repo.test/' + name).pathname.slice(1);
+      if (href.startsWith('https:') || href === '维护说明.md') continue;
+      const target = decodeURIComponent(new URL(href, 'https://repo.test/' + name).pathname.slice(1));
       assert(files.has(target.endsWith('/') ? target + 'README.md' : target), `${name} links to missing ${target}`);
     }
   }
-  assert(files.get('README.md').includes('2 个版本、2 个安装包链接'));
+  assert(files.get('README.md').includes('2 个版本、2 个安装包'));
 });
 
 test('fail closed for source mismatch, unknown host, empty list and malformed notes', () => {
@@ -100,15 +105,16 @@ test('collector only reads official endpoints and never requests historical GitH
   await assert.rejects(collectOfficial(baseline, null, async () => { throw Error('network timeout'); }), /timeout/);
 });
 
-test('all real preserved package pages remain byte-identical when a future release is added', async () => {
-  const data = JSON.parse(await readFile(new URL('../data/upstream.json', import.meta.url), 'utf8'));
-  const source = JSON.parse(await readFile(new URL('../data/source.json', import.meta.url), 'utf8'));
+test('all preserved package facts and Chinese paths survive a future release', async () => {
+  const data = JSON.parse(await readFile(new URL('../data/packages.json', import.meta.url), 'utf8'));
   const state = mergeOfficial(data, null, listing('8.0.79'), config('8.0.79'), details('8.0.79'));
-  const pages = renderOfficial(normalize(data), source, state);
+  const pages = renderOfficial(normalize(data), meta, state);
   let count = 0;
   for (const row of normalize(data)) {
-    const name = `${row.directory}/README.md`;
-    assert.equal(pages.get(name), await readFile(new URL('../' + name, import.meta.url), 'utf8'));
+    const name = `${allocatePaths(normalize(data))[row.url]}/README.md`;
+    assert(pages.get(name).includes(row.url));
+    assert(pages.get(name).includes(row.date));
+    assert(pages.get(name).startsWith(`# 微信安卓版 ${row.version}`));
     count++;
   }
   assert.equal(count, 172);
