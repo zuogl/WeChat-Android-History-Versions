@@ -15,11 +15,11 @@
 
 ## 安装包下载
 
-[下载 weixin8057android2820_0x28003932_arm64.apk]( https://dldir1v6.qq.com/weixin/android/weixin8057android2820_0x28003932_arm64.apk)
+[下载 weixin8057android2820_0x28003932_arm64.apk](https://dldir1v6.qq.com/weixin/android/weixin8057android2820_0x28003932_arm64.apk)
 
 下载链接：
 
- https://dldir1v6.qq.com/weixin/android/weixin8057android2820_0x28003932_arm64.apk
+https://dldir1v6.qq.com/weixin/android/weixin8057android2820_0x28003932_arm64.apk
 
 这是上游记录中的该安装包地址，不会自动替换成其他版本下载地址。本仓库不托管 APK，未逐包验证下载可用性、签名、安装或登录状态。
 

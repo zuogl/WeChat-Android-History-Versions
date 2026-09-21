@@ -58,3 +58,11 @@ test('numeric version order and deterministic rendering', () => {
   assert.deepEqual(render(rows, meta), render(rows, meta));
   assert.throws(() => render(rows, { commit: '../main' }));
 });
+
+test('source URL whitespace is removed in pages and duplicate detection', () => {
+  const padded = { ...row(), url: ' ' + row().url + ' ' };
+  const rows = normalize([padded]);
+  assert.equal(rows[0].url, row().url);
+  assert.throws(() => normalize([row(), padded]), /Duplicate/);
+  assert(!render(rows, meta).get('README.md').includes(']( https:'));
+});

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,17 +25,18 @@ export function normalize(input) {
     assert(VERSION.test(version) && version === nameVersion, 'Conflicting or unsafe version');
     assert(/^\d{4}-\d{2}-\d{2}$/.test(row.publish_date), 'Invalid release date');
     assert(new Date(`${row.publish_date}T00:00:00Z`).toISOString().slice(0, 10) === row.publish_date, 'Invalid calendar date');
-    const url = new URL(row.url);
+    assert(typeof row.url === 'string', 'Missing package URL');
+    const url = new URL(row.url.trim());
     assert(url.protocol === 'https:' && HOSTS.has(url.hostname), 'Unexpected download host or protocol');
     assert(!url.username && !url.password && !url.port && !url.search && !url.hash, 'Unexpected URL credentials or suffix');
     assert(/^\/weixin\/android\/[A-Za-z0-9_.-]+\.apk$/.test(url.pathname), 'Unexpected APK path');
     const filename = path.posix.basename(url.pathname);
     const directory = `versions/${version}--${filename.slice(0, -4)}`;
-    assert(!seen.has(row.url), 'Duplicate download URL');
+    assert(!seen.has(url.href), 'Duplicate download URL');
     assert(!folders.has(directory), 'Conflicting package directories');
-    seen.add(row.url);
+    seen.add(url.href);
     folders.add(directory);
-    return { version, date: row.publish_date, url: row.url, filename, directory,
+    return { version, date: row.publish_date, url: url.href, filename, directory,
       versionFrom: row.version ? 'version' : 'name' };
   }).sort((a, b) => {
     const x = a.version.split('.').map(Number);
@@ -133,6 +134,19 @@ async function run() {
   for (const [name, content] of generated) {
     if (check) assert(await optionalRead(name) === content, `Generated file out of date: ${name}`);
     else changed += Number(await saveIfChanged(name, content));
+  }
+  if (check) {
+    for (const [name, content] of generated) {
+      for (const match of content.matchAll(/\]\(([^)]+)\)/g)) {
+        const link = match[1];
+        assert(link === link.trim(), `Whitespace in link: ${name}`);
+        if (link.startsWith('https://')) { new URL(link); continue; }
+        const target = path.resolve(ROOT, path.dirname(name), link);
+        assert(target.startsWith(ROOT), `Out-of-repository link: ${name}`);
+        const targetStat = await stat(target);
+        if (targetStat.isDirectory()) await stat(path.join(target, 'README.md'));
+      }
+    }
   }
   if (!check) {
     changed += Number(await saveIfChanged('data/upstream.json', dataText));
