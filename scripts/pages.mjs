@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 const escapeText = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/[\\`*_[\]{}()#!|]/g, '\\$&');
-const versionPrefix = version => `版本/微信安卓版${version.replaceAll('.', '')}`;
+const versionPrefix = version => `版本/微信安卓版${version}`;
 export const logPath = version => `更新日志/微信安卓版${version}/README.md`;
 
 // Persist names by package URL so adding another build never renames published pages.
@@ -14,7 +14,7 @@ export function allocatePaths(rows, previous = {}) {
     const row = byURL.get(url);
     assert(row, 'Page path mapping references missing package');
     const prefix = versionPrefix(row.version);
-    assert(typeof directory === 'string' && (directory === prefix || new RegExp(`^${prefix}-安装包[1-9][0-9]*$`).test(directory)), 'Invalid Chinese page directory');
+    assert(typeof directory === 'string' && (directory === prefix || (directory.startsWith(prefix) && /^-安装包[1-9][0-9]*$/.test(directory.slice(prefix.length)))), 'Invalid Chinese page directory');
     assert(!used.has(directory), 'Duplicate page directory');
     used.add(directory);
   }
@@ -47,7 +47,7 @@ export function renderPages(rows, state, paths) {
     const suffix = paths[row.url].match(/-安装包(\d+)$/)?.[1];
     return suffix ? `安装包${suffix}` : '安装包';
   };
-  const table = rows.map(row => `| [${row.version}](${paths[row.url]}/) | ${row.date} | [下载${packageLabel(row)}](${row.url}) |`).join('\n');
+  const table = rows.map(row => `| [${row.version}](${paths[row.url]}/) | ${row.date} | [${row.url}](${row.url}) |`).join('\n');
   const notesText = release => release.status === 'pending'
     ? '更新说明暂未提供，稍后自动补充。'
     : release.notes.map(note => `- ${escapeText(note)}`).join('\n') || '此版本暂无文字更新说明。';
@@ -58,7 +58,7 @@ export function renderPages(rows, state, paths) {
     const related = groups.get(row.version).filter(other => other.url !== row.url)
       .map(other => `- [${packageLabel(other)}](../${paths[other.url].split('/')[1]}/)`).join('\n');
     const architecture = row.filename.includes('_arm64') ? '文件名标注为 64 位，未验证安装包内部信息。' : '暂未确认。';
-    files.set(`${paths[row.url]}/README.md`, `# 微信安卓版 ${row.version}\n\n## 版本信息\n\n| 项目 | 内容 |\n| :--- | :--- |\n| 软件 | 微信 |\n| 平台 | 安卓 |\n| 版本号 | ${row.version} |\n| 发布日期 | ${row.date} |\n| 安装包 | ${packageLabel(row)} |\n| 原始文件名 | \`${row.filename}\` |\n| 处理器架构 | ${architecture} |\n\n## 安装包下载\n\n[下载${packageLabel(row)}](${row.url})\n\n${release ? `## 更新内容\n\n${notesText(release)}\n\n[查看本版本更新日志](../../${logPath(row.version)})\n\n` : ''}${related ? `## 同版本其他安装包\n\n${related}\n\n` : ''}[返回全部历史版本](../../README.md)\n\n部分旧版本可能无法下载、安装或登录，通常建议使用最新版。\n`);
+    files.set(`${paths[row.url]}/README.md`, `# 微信安卓版 ${row.version}\n\n## 版本信息\n\n| 项目 | 内容 |\n| :--- | :--- |\n| 软件 | 微信 |\n| 平台 | 安卓 |\n| 版本号 | ${row.version} |\n| 发布日期 | ${row.date} |\n| 安装包 | ${packageLabel(row)} |\n| 原始文件名 | \`${row.filename}\` |\n| 处理器架构 | ${architecture} |\n\n## 安装包下载\n\n[${row.url}](${row.url})\n\n${release ? `## 更新内容\n\n${notesText(release)}\n\n[查看本版本更新日志](../../${logPath(row.version)})\n\n` : ''}${related ? `## 同版本其他安装包\n\n${related}\n\n` : ''}[返回全部历史版本](../../README.md)\n\n部分旧版本可能无法下载、安装或登录，通常建议使用最新版。\n`);
   }
   for (const release of state.releases) {
     const downloads = (groups.get(release.version) || []).map(row => `- [${packageLabel(row)}](../../${paths[row.url]}/)`).join('\n');
