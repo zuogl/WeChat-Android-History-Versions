@@ -3,15 +3,24 @@
   "baselineVersion": "8.0.78",
   "source": "https://weixin.qq.com/api/updates",
   "latestObserved": {
-    "version": "8.0.79",
-    "publish_date": "2026-09-30",
-    "source": "https://weixin.qq.com/updates?platform=android&version=8.0.79",
+    "version": "8.0.80",
+    "publish_date": "2026-10-28",
+    "source": "https://weixin.qq.com/updates?platform=android&version=8.0.80",
     "status": "available",
     "notes": [
       "解决了一些已知问题。"
     ]
   },
   "releases": [
+    {
+      "version": "8.0.80",
+      "publish_date": "2026-10-28",
+      "source": "https://weixin.qq.com/updates?platform=android&version=8.0.80",
+      "status": "available",
+      "notes": [
+        "解决了一些已知问题。"
+      ]
+    },
     {
       "version": "8.0.79",
       "publish_date": "2026-09-30",
@@ -23,6 +32,15 @@
     }
   ],
   "packages": [
+    {
+      "name": "微信 8.0.80 for Android",
+      "version": "8.0.80",
+      "publish_date": "2026-10-28",
+      "url": "https://dldir1v6.qq.com/weixin/android/weixin8080android3220_0x28005030_arm64.apk",
+      "source": "https://weixin.qq.com/updates?platform=android&version=8.0.80",
+      "downloadSource": "https://weixin.qq.com/api/download_conf",
+      "downloadKey": "android"
+    },
     {
       "name": "微信 8.0.79 for Android",
       "version": "8.0.79",

@@ -2,12 +2,13 @@
 
 按版本号查找微信安卓版历史安装包，查看发布日期并下载安装。
 
-目前收录 **134 个版本、174 个安装包**。点击版本号可查看详情；同一版本的不同安装包分别列出。
+目前收录 **135 个版本、175 个安装包**。点击版本号可查看详情；同一版本的不同安装包分别列出。
 
 ## 历史版本下载
 
 | 版本号 | 发布日期 | 安装包下载 |
 | :--- | :--- | :--- |
+| [8.0.80](版本/微信安卓版8.0.80/) | 2026-10-28 | [https://dldir1v6.qq.com/weixin/android/weixin8080android3220_0x28005030_arm64.apk](https://dldir1v6.qq.com/weixin/android/weixin8080android3220_0x28005030_arm64.apk) |
 | [8.0.79](版本/微信安卓版8.0.79/) | 2026-09-30 | [https://dldir1v6.qq.com/weixin/android/weixin8079android3200_0x28004f30_arm64.apk](https://dldir1v6.qq.com/weixin/android/weixin8079android3200_0x28004f30_arm64.apk) |
 | [8.0.79](版本/微信安卓版8.0.79-安装包1/) | 2026-09-30 | [https://dldir1v6.qq.com/weixin/android/weixin8079android3200_0x28004f30_arm64_1.apk](https://dldir1v6.qq.com/weixin/android/weixin8079android3200_0x28004f30_arm64_1.apk) |
 | [8.0.78](版本/微信安卓版8.0.78-安装包1/) | 2026-09-09 | [https://dldir1v6.qq.com/weixin/android/weixin8078android3180_0x28004e32_arm64.apk](https://dldir1v6.qq.com/weixin/android/weixin8078android3180_0x28004e32_arm64.apk) |
@@ -187,6 +188,7 @@
 
 | 版本号 | 发布日期 | 下载状态 |
 | :--- | :--- | :--- |
+| [8.0.80](更新日志/微信安卓版8.0.80/README.md) | 2026-10-28 | 已有安装包 |
 | [8.0.79](更新日志/微信安卓版8.0.79/README.md) | 2026-09-30 | 已有安装包 |
 
 ## 使用说明
